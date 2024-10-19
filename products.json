@@ -1,0 +1,32 @@
+[
+    {
+        "name":"iphone",
+        "price":154,
+        "feature":true,
+        "company":"apple"
+    },
+    {
+        "name":"samsung",
+        "price":100,
+        "feature":false,
+        "company":"samsung"
+    },
+    {
+        "name":"oneplus",
+        "price":100,
+        "feature":true,
+        "company":"oneplus"
+    },
+    {
+        "name":"redmi",
+        "price":100,
+        "feature":false,
+        "company":"redmi"
+    },
+    {
+        "name":"realme",
+        "price":100,
+        "feature":true,
+        "company":"realme"
+    }
+]
