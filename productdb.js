@@ -1,19 +1,32 @@
 require('dotenv').config();
 const connectdb = require('./db/app');
 const Product = require('./models/app');
-const Productjson = require('./products.json');
+const products = require('./products.json');
 
-const start = async() => {
+const start = async () => {
     try {
-        console.log("start")
+        console.log('Connecting to database...')
         await connectdb(process.env.CONNECT);
+        
+        console.log('Clearing existing products...')
         await Product.deleteMany({});
-        await Product.create(Productjson);
-        console.log('Data imported successfully');
+        
+        console.log('Importing new products...')
+        await Product.create(products);
+        
+        console.log('Data import completed successfully!')
+        process.exit(0);
     } catch (error) {
-        console.log('Data import failed');
+        console.error('Error during data import:', error.message);
+        process.exit(1);
     }
-}
-start();
+};
 
+// Handle process termination
+process.on('SIGINT', () => {
+    console.log('Import interrupted');
+    process.exit(1);
+});
+
+start();
 

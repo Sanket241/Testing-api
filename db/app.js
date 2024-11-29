@@ -1,11 +1,30 @@
 const mongoose = require('mongoose');
 
-const start = (CONNECT) => {
+const connectDb = async (uri) => {
     try {
-        mongoose.connect(CONNECT);
-        console.log('Connected to the database');
+        mongoose.connection.on('connected', () => {
+            console.log('MongoDB connected successfully');
+        });
+
+        mongoose.connection.on('error', (err) => {
+            console.error('MongoDB connection error:', err);
+            process.exit(1);
+        });
+
+        mongoose.connection.on('disconnected', () => {
+            console.log('MongoDB disconnected');
+        });
+
+        process.on('SIGINT', async () => {
+            await mongoose.connection.close();
+            process.exit(0);
+        });
+
+        await mongoose.connect(uri);
     } catch (error) {
-        console.log(error);
+        console.error('Error connecting to MongoDB:', error);
+        throw error;
     }
-}
-module.exports = start;
+};
+
+module.exports = connectDb;
