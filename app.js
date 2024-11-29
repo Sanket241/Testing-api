@@ -1,21 +1,65 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const mongoose = require('mongoose');
 const app = express();
-const initialPort = process.env.PORT || 3000;
 const products = require('./routes/products');
-const connectDb = require('./db/app');
 
 // Middleware
-app.use(express.json());
 app.use(cors());
+app.use(express.json());
 
-// Routes
-app.use('/api/v1', products);
+// Database connection
+let cachedDb = null;
+const connectDb = async () => {
+    if (cachedDb) {
+        return cachedDb;
+    }
+    try {
+        const db = await mongoose.connect(process.env.CONNECT);
+        cachedDb = db;
+        console.log('Connected to MongoDB');
+        return db;
+    } catch (error) {
+        console.error('MongoDB connection error:', error);
+        throw error;
+    }
+};
+
+// Welcome route
+app.get('/', async (req, res) => {
+    try {
+        await connectDb();
+        res.json({
+            success: true,
+            message: 'Welcome to Products API',
+            version: '1.0.0',
+            endpoints: {
+                products: '/api/v1',
+                testing: '/api/v1/testing'
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ 
+            success: false, 
+            message: 'Database connection error' 
+        });
+    }
+});
+
+// API routes
+app.use('/api/v1', async (req, res, next) => {
+    try {
+        await connectDb();
+        next();
+    } catch (error) {
+        next(error);
+    }
+}, products);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-    console.error(err.stack);
+    console.error(err);
     res.status(err.status || 500).json({
         success: false,
         message: err.message || 'Internal Server Error',
@@ -23,66 +67,26 @@ app.use((err, req, res, next) => {
     });
 });
 
-// Validate required environment variables
-const requiredEnvVars = ['CONNECT'];
-for (const envVar of requiredEnvVars) {
-    if (!process.env[envVar]) {
-        console.error(`Error: ${envVar} environment variable is required`);
-        process.exit(1);
-    }
-}
-
-// Function to try starting server on a port
-const tryPort = (port) => {
-    return new Promise((resolve, reject) => {
-        const server = app.listen(port)
-            .on('listening', () => {
-                resolve(server);
-            })
-            .on('error', (err) => {
-                if (err.code === 'EADDRINUSE') {
-                    resolve(false);
-                } else {
-                    reject(err);
-                }
-            });
+// 404 handler
+app.use((req, res) => {
+    res.status(404).json({
+        success: false,
+        message: 'Route not found',
+        endpoints: {
+            root: '/',
+            products: '/api/v1',
+            testing: '/api/v1/testing'
+        }
     });
-};
-
-// Start the server
-const start = async () => {
-    try {
-        // Connect to the database
-        await connectDb(process.env.CONNECT);
-        console.log('Connected to the database successfully.');
-
-        // Try ports until one works
-        let currentPort = initialPort;
-        let server = false;
-        
-        while (!server && currentPort < 65536) {
-            server = await tryPort(currentPort);
-            if (!server) {
-                console.log(`Port ${currentPort} is in use, trying ${currentPort + 1}...`);
-                currentPort++;
-            }
-        }
-
-        if (server) {
-            console.log(`Server is running on port ${currentPort}`);
-        } else {
-            throw new Error('No available ports found');
-        }
-    } catch (err) {
-        console.error('Failed to start the server:', err.message);
-        process.exit(1); // Exit process with failure
-    }
-};
-
-// Graceful shutdown for cleanup
-process.on('SIGINT', () => {
-    console.log('Shutting down gracefully...');
-    process.exit(0);
 });
 
-start();
+// Export the app for serverless deployment
+module.exports = app;
+
+// Only listen if not in production (Vercel)
+if (process.env.NODE_ENV !== 'production') {
+    const port = process.env.PORT || 3000;
+    app.listen(port, () => {
+        console.log(`Server is running on port ${port}`);
+    });
+}

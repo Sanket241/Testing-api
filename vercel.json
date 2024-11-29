@@ -1,6 +1,5 @@
 {
     "version": 2,
-    "name": "products-api",
     "builds": [
         {
             "src": "app.js",
@@ -9,8 +8,15 @@
     ],
     "routes": [
         {
+            "src": "/api/v1/(.*)",
+            "dest": "/app.js"
+        },
+        {
             "src": "/(.*)",
-            "dest": "app.js"
+            "dest": "/app.js"
         }
-    ]
+    ],
+    "env": {
+        "NODE_ENV": "production"
+    }
 }
